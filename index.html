@@ -127,34 +127,7 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
-      .refresh-btn {
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        padding: 9px 14px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--card-bg);
-        color: var(--text-main);
-        font-family: inherit;
-        font-size: 0.9rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition:
-          background 0.2s,
-          border-color 0.2s;
-      }
 
-      .refresh-btn:hover {
-        border-color: var(--primary);
-        background: var(--primary-light);
-      }
-
-      .refresh-btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
       .tabs-container::-webkit-scrollbar {
         display: none;
       }
@@ -377,16 +350,115 @@
         margin-top: 15px;
         font-size: 1rem;
       }
+      .floating-controls {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        z-index: 200;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+      }
+
+      .sync-control {
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+      }
+
+      .refresh-btn {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 10px 13px;
+        border: 0;
+        border-right: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-main);
+        font-family: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .refresh-btn:hover {
+        background: var(--primary-light);
+        color: var(--primary-dark);
+      }
+
+      .refresh-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
       .sync-status {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
         gap: 6px;
-        margin: 0 auto 8px;
-        max-width: 1100px;
-        padding: 0 20px;
+        padding: 10px 13px;
         color: var(--text-muted);
-        font-size: 0.8rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
+      }
+
+      .pending-update {
+        display: none;
+        align-items: center;
+        gap: 7px;
+        padding: 10px 13px;
+        border: 1px solid var(--primary);
+        border-radius: 12px;
+        background: var(--primary);
+        color: white;
+        font-family: inherit;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+      }
+
+      .pending-update strong {
+        font-weight: 700;
+      }
+
+      .scroll-top-btn {
+        display: none;
+        width: 42px;
+        height: 42px;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        background: var(--card-bg);
+        color: var(--text-main);
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+      }
+
+      .scroll-top-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+
+      @media (max-width: 600px) {
+        .floating-controls {
+          right: 12px;
+          bottom: 12px;
+          left: 12px;
+        }
+
+        .sync-control {
+          max-width: 100%;
+        }
+
+        .sync-status {
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .pending-update {
+          max-width: 100%;
+        }
       }
     </style>
   </head>
@@ -412,24 +484,8 @@
       </div>
     </div>
 
-    <div class="sync-status">
-      <i class="fa-solid fa-clock-rotate-left"></i>
-      <span id="last-synced">Belum disinkronkan</span>
-    </div>
-
     <div class="tabs-container">
       <div class="tabs" id="attendance-tabs"></div>
-
-      <button
-        class="refresh-btn"
-        id="refresh-btn"
-        type="button"
-        onclick="handleManualRefresh()"
-        title="Refresh data"
-      >
-        <i class="fa-solid fa-rotate-right"></i>
-        <span>Refresh</span>
-      </button>
     </div>
 
     <main>
@@ -457,6 +513,48 @@
         <iframe id="lightboxIframe" src=""></iframe>
       </div>
       <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+
+    <div class="floating-controls">
+      <button
+        class="scroll-top-btn"
+        id="scroll-top-btn"
+        type="button"
+        onclick="scrollToTop()"
+        title="Kembali ke atas"
+        aria-label="Kembali ke atas"
+      >
+        <i class="fa-solid fa-arrow-up"></i>
+      </button>
+
+      <button
+        class="pending-update"
+        id="pending-update"
+        type="button"
+        onclick="applyPendingUpdate()"
+      >
+        <i class="fa-solid fa-circle-arrow-up"></i>
+        <span>Data baru tersedia</span>
+        <strong>Tampilkan</strong>
+      </button>
+
+      <div class="sync-control">
+        <button
+          class="refresh-btn"
+          id="refresh-btn"
+          type="button"
+          onclick="handleManualRefresh()"
+          title="Refresh data"
+        >
+          <i class="fa-solid fa-rotate-right"></i>
+          <span>Refresh</span>
+        </button>
+
+        <div class="sync-status">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span id="last-synced">Belum disinkronkan</span>
+        </div>
+      </div>
     </div>
 
     <script src="config.js"></script>
@@ -488,6 +586,9 @@
       let currentTab = APP_CONFIG.attendanceCategories[0].id;
 
       const sheetCache = new Map();
+      const renderedDataSnapshots = new Map();
+      let renderedSheet = null;
+      let pendingDataUpdate = null;
       const CACHE_TTL = 30_000; // 30 detik
 
       function fetchSheet(sheetName, forceRefresh = false) {
@@ -558,15 +659,47 @@
         const loader = document.getElementById("loader");
         const emptyState = document.getElementById("emptyState");
 
-        container.innerHTML = "";
-        emptyState.style.display = "none";
-        loader.style.display = "block";
+        // Loading screen hanya ditampilkan jika belum ada data yang sedang tampil.
+        const isInitialLoad =
+          container.children.length === 0 || renderedSheet !== sheetName;
+
+        if (isInitialLoad) {
+          emptyState.style.display = "none";
+          loader.style.display = "block";
+        }
 
         try {
           const data = await fetchSheet(sheetName, forceRefresh);
-          loader.style.display = "none";
+
+          if (isInitialLoad) {
+            loader.style.display = "none";
+          }
+
+          const dataSnapshot = JSON.stringify(data);
+          const previousSnapshot = renderedDataSnapshots.get(sheetName);
+
+          // Data dari server sama dengan yang sudah tampil.
+          // Jangan menyentuh DOM agar posisi scroll tidak terganggu.
+          if (!isInitialLoad && previousSnapshot === dataSnapshot) {
+            return;
+          }
+
+          // Jika data berubah saat user sedang melihat list,
+          // simpan update terlebih dahulu agar tidak mengganggu posisi baca.
+          if (!isInitialLoad && renderedSheet === sheetName) {
+            pendingDataUpdate = {
+              sheetName,
+              data,
+              snapshot: dataSnapshot,
+            };
+
+            showPendingUpdate();
+            return;
+          }
 
           let hasValidData = false;
+
+          const fragment = document.createDocumentFragment();
 
           data.forEach((peserta) => {
             // Abaikan jika nama/NRP kosong atau jika Nama adalah error dari rumus
@@ -636,20 +769,38 @@
                             </a>
                         </div>
                     `;
-            container.appendChild(card);
+            fragment.appendChild(card);
           });
 
-          if (!hasValidData) emptyState.style.display = "block";
+          if (hasValidData) {
+            container.replaceChildren(fragment);
+            emptyState.style.display = "none";
+          } else {
+            container.replaceChildren();
+            emptyState.style.display = "block";
+          }
+
+          renderedDataSnapshots.set(sheetName, dataSnapshot);
+          renderedSheet = sheetName;
         } catch (error) {
           loader.style.display = "none";
-          emptyState.innerHTML = `<i class="fa-solid fa-triangle-exclamation fa-3x"></i><h3>Gagal Memuat Data</h3><p>Periksa koneksi internet atau Web App URL Anda.</p>`;
-          emptyState.style.display = "block";
+
+          // Jangan hilangkan data lama jika background refresh gagal.
+          if (container.children.length === 0) {
+            emptyState.innerHTML = `<i class="fa-solid fa-triangle-exclamation fa-3x"></i><h3>Gagal Memuat Data</h3><p>Periksa koneksi internet atau Web App URL Anda.</p>`;
+            emptyState.style.display = "block";
+          }
+
           console.error("Error fetching data:", error);
         }
       }
 
       function changeTab(sheetName, btnElement) {
         if (currentTab === sheetName) return;
+
+        pendingDataUpdate = null;
+        hidePendingUpdate();
+
         currentTab = sheetName;
 
         // Update UI Tab Aktif
@@ -717,6 +868,44 @@
         }
       }
 
+      function showPendingUpdate() {
+        const button = document.getElementById("pending-update");
+
+        if (button) {
+          button.style.display = "flex";
+        }
+      }
+
+      function hidePendingUpdate() {
+        const button = document.getElementById("pending-update");
+
+        if (button) {
+          button.style.display = "none";
+        }
+      }
+
+      function applyPendingUpdate() {
+        if (!pendingDataUpdate) return;
+
+        const { sheetName, data, snapshot } = pendingDataUpdate;
+
+        // Simpan data terbaru ke cache render.
+        renderedDataSnapshots.set(sheetName, snapshot);
+
+        pendingDataUpdate = null;
+        hidePendingUpdate();
+
+        // Paksa loadData melewati pengecekan snapshot sehingga data baru dirender.
+        renderedDataSnapshots.delete(sheetName);
+
+        sheetCache.set(sheetName, {
+          timestamp: Date.now(),
+          promise: Promise.resolve(data),
+        });
+
+        loadData(sheetName);
+      }
+
       function updateLastSyncedTime() {
         const timestamp = new Intl.DateTimeFormat("id-ID", {
           dateStyle: "medium",
@@ -777,6 +966,25 @@
 
         await refreshData(true);
       }
+
+      function scrollToTop() {
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+      }
+
+      function updateScrollTopButton() {
+        const button = document.getElementById("scroll-top-btn");
+
+        if (!button) return;
+
+        button.style.display = window.scrollY > 500 ? "block" : "none";
+      }
+
+      window.addEventListener("scroll", updateScrollTopButton, {
+        passive: true,
+      });
 
       // Memuat kategori default dan data rekap saat halaman pertama kali dibuka
       window.onload = () => {
