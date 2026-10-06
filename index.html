@@ -61,6 +61,46 @@
         margin-top: 4px;
       }
 
+      .dataset-selector {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .dataset-selector label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      .dataset-selector select {
+        max-width: 320px;
+        padding: 7px 32px 7px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--card-bg);
+        color: var(--text-main);
+        font-family: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        outline: none;
+      }
+
+      .dataset-selector select:hover {
+        border-color: var(--primary);
+      }
+
+      .dataset-selector select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+      }
+
       /* Rekapitulasi / Statistik */
       .rekap-wrapper {
         max-width: 1200px;
@@ -469,6 +509,16 @@
         <span id="portal-title"></span>
       </h1>
       <p>Sistem Pengecekan Kehadiran & Izin IONICS</p>
+      <div class="dataset-selector">
+        <label for="dataset-select">
+          <i class="fa-solid fa-calendar-days"></i>
+          Kegiatan
+        </label>
+
+        <select id="dataset-select">
+          <option>Memuat kegiatan...</option>
+        </select>
+      </div>
     </header>
 
     <!-- Area Rekapitulasi -->
@@ -559,31 +609,174 @@
 
     <script src="config.js"></script>
     <script>
-      // === GANTI URL DI BAWAH INI DENGAN WEB APP URL ANDA ===
       const API_URL = APP_CONFIG.api.url;
-      // =======================================================
-      document.getElementById("portal-title").textContent =
-        `${APP_CONFIG.portalTitle} ${APP_CONFIG.event.name}`;
 
-      document.getElementById("rek-total").textContent =
-        APP_CONFIG.event.participantCount;
+      let datasets = [];
+      let attendanceCategories = [];
+      let unsubmittedCategory = null;
+      let activeDataset = null;
+      let currentTab = null;
 
-      const rekapContainer = document.getElementById("rekap-container");
-      const alpaCard = document.getElementById("rekap-alpa-card");
+      function getDatasetSlugFromUrl() {
+        const pathParts = window.location.pathname.split("/").filter(Boolean);
 
-      APP_CONFIG.attendanceCategories.forEach((category) => {
-        const card = document.createElement("div");
-        card.className = "rekap-card";
+        const repoName = "Latihan-SPS134-Day-21";
 
-        card.innerHTML = `
-    <span class="label">${category.label}</span>
-    <span class="value" id="rek-${category.id.toLowerCase()}">...</span>
-  `;
+        const repoIndex = pathParts.indexOf(repoName);
 
-        rekapContainer.insertBefore(card, alpaCard);
-      });
+        if (repoIndex !== -1) {
+          const pathSlug = pathParts[repoIndex + 1];
 
-      let currentTab = APP_CONFIG.attendanceCategories[0].id;
+          if (pathSlug) {
+            return decodeURIComponent(pathSlug);
+          }
+        }
+
+        const storedSlug = sessionStorage.getItem("requestedDatasetSlug");
+
+        if (storedSlug) {
+          sessionStorage.removeItem("requestedDatasetSlug");
+
+          return storedSlug;
+        }
+
+        return null;
+      }
+
+      function updateDatasetUrl(slug) {
+        if (!slug) {
+          return;
+        }
+
+        const repoName = "Latihan-SPS134-Day-21";
+
+        const targetPath = `/${repoName}/${encodeURIComponent(slug)}`;
+
+        if (window.location.pathname !== targetPath) {
+          window.history.replaceState(null, "", targetPath);
+        }
+      }
+
+      async function loadPortalConfig() {
+        const response = await fetch(`${API_URL}?action=datasets`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const config = await response.json();
+
+        if (!config.datasets?.length) {
+          throw new Error("Tidak ada dataset yang tersedia");
+        }
+
+        if (!config.attendanceCategories?.length) {
+          throw new Error("Kategori presensi tidak tersedia");
+        }
+
+        if (!config.unsubmittedCategory) {
+          throw new Error("Kategori belum presensi tidak tersedia");
+        }
+
+        datasets = config.datasets;
+        attendanceCategories = config.attendanceCategories;
+        unsubmittedCategory = config.unsubmittedCategory;
+
+        const requestedSlug = getDatasetSlugFromUrl();
+
+        if (requestedSlug) {
+          const requestedDataset = datasets.find(
+            (dataset) => dataset.slug === requestedSlug,
+          );
+
+          if (requestedDataset) {
+            activeDataset = requestedDataset;
+            updateDatasetUrl(activeDataset.slug);
+          } else {
+            console.warn(
+              `Dataset dengan slug "${requestedSlug}" tidak ditemukan. Menggunakan dataset pertama.`,
+            );
+
+            activeDataset = datasets[0];
+          }
+        } else {
+          activeDataset = datasets[0];
+        }
+
+        currentTab = attendanceCategories[0].id;
+      }
+
+      function renderPortalUI() {
+        document.getElementById("portal-title").textContent =
+          `${APP_CONFIG.portalTitle} ${activeDataset.name}`;
+
+        document.getElementById("rek-total").textContent =
+          activeDataset.participantCount;
+
+        const datasetSelect = document.getElementById("dataset-select");
+
+        datasetSelect.innerHTML = "";
+
+        datasetSelect.onchange = () => {
+          const selectedDataset = datasets.find(
+            (dataset) => dataset.id === datasetSelect.value,
+          );
+
+          if (!selectedDataset) {
+            return;
+          }
+
+          const repoName = "Latihan-SPS134-Day-21";
+
+          window.location.href = `/${repoName}/${encodeURIComponent(selectedDataset.slug)}`;
+        };
+
+        datasets.forEach((dataset) => {
+          const option = document.createElement("option");
+
+          option.value = dataset.id;
+          option.textContent = dataset.name;
+          option.selected = dataset.id === activeDataset.id;
+
+          datasetSelect.appendChild(option);
+        });
+
+        const rekapContainer = document.getElementById("rekap-container");
+        const alpaCard = document.getElementById("rekap-alpa-card");
+
+        attendanceCategories.forEach((category) => {
+          const card = document.createElement("div");
+          card.className = "rekap-card";
+
+          card.innerHTML = `
+      <span class="label">${category.label}</span>
+      <span class="value" id="rek-${category.id.toLowerCase()}">...</span>
+    `;
+
+          rekapContainer.insertBefore(card, alpaCard);
+        });
+
+        const tabsContainer = document.getElementById("attendance-tabs");
+
+        attendanceCategories.forEach((category, index) => {
+          const button = document.createElement("button");
+
+          button.className = `tab-btn${index === 0 ? " active" : ""}`;
+          button.textContent = category.label;
+          button.onclick = () => changeTab(category.id, button);
+
+          tabsContainer.appendChild(button);
+        });
+
+        const unsubmittedButton = document.createElement("button");
+
+        unsubmittedButton.className = "tab-btn";
+        unsubmittedButton.textContent = unsubmittedCategory.label;
+        unsubmittedButton.onclick = () =>
+          changeTab(unsubmittedCategory.id, unsubmittedButton);
+
+        tabsContainer.appendChild(unsubmittedButton);
+      }
 
       const sheetCache = new Map();
       const renderedDataSnapshots = new Map();
@@ -599,7 +792,9 @@
           return cached.promise;
         }
 
-        const request = fetch(`${API_URL}?sheet=${sheetName}`)
+        const request = fetch(
+          `${API_URL}?dataset=${encodeURIComponent(activeDataset.id)}&sheet=${encodeURIComponent(sheetName)}`,
+        )
           .then((response) => {
             if (!response.ok) {
               throw new Error(`HTTP ${response.status}`);
@@ -623,28 +818,6 @@
 
         return request;
       }
-
-      const tabsContainer = document.getElementById("attendance-tabs");
-
-      APP_CONFIG.attendanceCategories.forEach((category, index) => {
-        const button = document.createElement("button");
-
-        button.className = `tab-btn${index === 0 ? " active" : ""}`;
-        button.textContent = category.label;
-        button.onclick = () => changeTab(category.id, button);
-
-        tabsContainer.appendChild(button);
-      });
-
-      const unsubmittedCategory = APP_CONFIG.unsubmittedCategory;
-      const unsubmittedButton = document.createElement("button");
-
-      unsubmittedButton.className = "tab-btn";
-      unsubmittedButton.textContent = unsubmittedCategory.label;
-      unsubmittedButton.onclick = () =>
-        changeTab(unsubmittedCategory.id, unsubmittedButton);
-
-      tabsContainer.appendChild(unsubmittedButton);
 
       // Konversi URL Drive biasa menjadi URL Direct Download (Bisa dirender img src)
       function getDriveFileId(url) {
@@ -719,7 +892,7 @@
             let imgArea = "";
 
             // Hanya render kotak gambar untuk kategori presensi
-            if (sheetName !== APP_CONFIG.unsubmittedCategory.id) {
+            if (sheetName !== unsubmittedCategory.id) {
               if (fileId) {
                 const thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w600`;
                 const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
@@ -827,11 +1000,9 @@
 
       // Fungsi untuk mengambil rekapitulasi secara background
       async function loadRekap(forceRefresh = false) {
-        const sheets = APP_CONFIG.attendanceCategories.map(
-          (category) => category.id,
-        );
+        const sheets = attendanceCategories.map((category) => category.id);
         let totalPresensi = 0;
-        const TOTAL_TARGET = APP_CONFIG.event.participantCount;
+        const TOTAL_TARGET = activeDataset.participantCount;
 
         try {
           // Ambil semua data sheet melalui cache agar request tidak duplikat
@@ -986,11 +1157,22 @@
         passive: true,
       });
 
-      // Memuat kategori default dan data rekap saat halaman pertama kali dibuka
-      window.onload = () => {
-        refreshData();
+      // Memuat konfigurasi portal dari Central API sebelum mengambil data presensi
+      window.onload = async () => {
+        try {
+          await loadPortalConfig();
 
-        setInterval(handleAutoRefresh, AUTO_REFRESH_INTERVAL);
+          renderPortalUI();
+
+          await refreshData();
+
+          setInterval(handleAutoRefresh, AUTO_REFRESH_INTERVAL);
+        } catch (error) {
+          console.error("Gagal memuat portal:", error);
+
+          document.getElementById("portal-title").textContent =
+            "Gagal memuat portal";
+        }
       };
     </script>
   </body>
