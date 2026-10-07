@@ -620,41 +620,7 @@
       function getDatasetSlugFromUrl() {
         const pathParts = window.location.pathname.split("/").filter(Boolean);
 
-        const repoName = "Latihan-SPS134-Day-21";
-
-        const repoIndex = pathParts.indexOf(repoName);
-
-        if (repoIndex !== -1) {
-          const pathSlug = pathParts[repoIndex + 1];
-
-          if (pathSlug) {
-            return decodeURIComponent(pathSlug);
-          }
-        }
-
-        const storedSlug = sessionStorage.getItem("requestedDatasetSlug");
-
-        if (storedSlug) {
-          sessionStorage.removeItem("requestedDatasetSlug");
-
-          return storedSlug;
-        }
-
-        return null;
-      }
-
-      function updateDatasetUrl(slug) {
-        if (!slug) {
-          return;
-        }
-
-        const repoName = "Latihan-SPS134-Day-21";
-
-        const targetPath = `/${repoName}/${encodeURIComponent(slug)}`;
-
-        if (window.location.pathname !== targetPath) {
-          window.history.replaceState(null, "", targetPath);
-        }
+        return pathParts[0] ? decodeURIComponent(pathParts[0]) : null;
       }
 
       async function loadPortalConfig() {
@@ -691,7 +657,6 @@
 
           if (requestedDataset) {
             activeDataset = requestedDataset;
-            updateDatasetUrl(activeDataset.slug);
           } else {
             console.warn(
               `Dataset dengan slug "${requestedSlug}" tidak ditemukan. Menggunakan dataset pertama.`,
@@ -726,9 +691,7 @@
             return;
           }
 
-          const repoName = "Latihan-SPS134-Day-21";
-
-          window.location.href = `/${repoName}/${encodeURIComponent(selectedDataset.slug)}`;
+          window.location.href = `/${encodeURIComponent(selectedDataset.slug)}`;
         };
 
         datasets.forEach((dataset) => {
