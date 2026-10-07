@@ -7,7 +7,7 @@ const APP_CONFIG = {
   },
 
   api: {
-    url: "https://script.google.com/macros/s/AKfycbzUA5uGuhezSLPqf3IvrcY-mnlqv_VKUWlSPvUMKpV77WS0SHaIZSi0eRLTvmDyDcXrHQ/exec",
+    url: "https://script.google.com/macros/s/AKfycbxfNWmGtlp1DTZ3mNCzozSzWu0i_R1OdAh-sRZJruhSWMyg1etJLI1OAJxIHl72jTDX/exec",
   },
 
   attendanceCategories: [
