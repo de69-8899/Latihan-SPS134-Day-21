@@ -1070,7 +1070,10 @@
 
       let refreshInProgress = false;
 
-      async function refreshData(forceRefresh = false) {
+      async function refreshData(
+        forceRefresh = false,
+        applyImmediately = false,
+      ) {
         if (refreshInProgress) return;
 
         refreshInProgress = true;
@@ -1080,7 +1083,10 @@
             sheetCache.clear();
           }
 
-          await Promise.all([loadData(currentTab), loadRekap()]);
+          await Promise.all([
+            loadData(currentTab, false, applyImmediately),
+            loadRekap(),
+          ]);
 
           updateLastSyncedTime();
         } finally {
@@ -1098,7 +1104,7 @@
         icon.classList.add("fa-spin");
 
         try {
-          await refreshData(true);
+          await refreshData(true, true);
         } finally {
           icon.classList.remove("fa-spin");
           button.disabled = false;
