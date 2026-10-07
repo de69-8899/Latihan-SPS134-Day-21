@@ -841,6 +841,11 @@
           container.children.length === 0 || renderedSheet !== sheetName;
 
         if (isInitialLoad) {
+          // Jangan tampilkan data milik tab sebelumnya saat tab baru sedang dimuat.
+          if (renderedSheet !== sheetName) {
+            container.replaceChildren();
+          }
+
           emptyState.style.display = "none";
           loader.style.display = "block";
         }
