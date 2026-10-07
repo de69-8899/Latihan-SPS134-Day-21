@@ -779,6 +779,7 @@
       }
 
       const sheetCache = new Map();
+      const renderedDataCache = new Map();
       const renderedDataSnapshots = new Map();
       let renderedSheet = null;
       let pendingDataUpdate = null;
@@ -825,6 +826,102 @@
         const match =
           url.match(/id=([^&]+)/) || url.match(/d\/([a-zA-Z0-9_-]+)/);
         return match ? match[1] : null;
+      }
+
+      function renderData(sheetName, data) {
+        const container = document.getElementById("dataContainer");
+        const loader = document.getElementById("loader");
+        const emptyState = document.getElementById("emptyState");
+
+        let hasValidData = false;
+        const fragment = document.createDocumentFragment();
+
+        data.forEach((peserta) => {
+          // Abaikan jika nama/NRP kosong atau jika Nama adalah error dari rumus
+          if (
+            !peserta.Nama ||
+            !peserta.NRP ||
+            peserta.Nama === "#N/A" ||
+            peserta.Nama === "#REF!"
+          ) {
+            return;
+          }
+
+          hasValidData = true;
+
+          const fileId = getDriveFileId(peserta["Bukti Foto"]);
+          const card = document.createElement("div");
+          card.className = "card";
+
+          let imgArea = "";
+
+          // Hanya render kotak gambar untuk kategori presensi
+          if (sheetName !== unsubmittedCategory.id) {
+            if (fileId) {
+              const thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w600`;
+              const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+
+              imgArea = `
+          <div class="card-img-wrapper" onclick="openLightbox('${previewUrl}', '${peserta.Nama}')">
+            <img src="${thumbnailUrl}" alt="Bukti ${peserta.Nama}" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x400?text=Format+PDF/Tdk+Didukung';">
+          </div>
+          <a href="${peserta["Bukti Foto"]}" target="_blank" style="display:block; text-align:center; padding:8px; background:#f1f5f9; color:var(--primary-dark); font-size:0.8rem; text-decoration:none; font-weight:600; border-bottom:1px solid var(--border);">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka File Asli
+          </a>
+        `;
+            } else {
+              imgArea = `
+          <div class="card-img-wrapper" style="cursor:default;">
+            <div class="no-img">
+              <i class="fa-solid fa-image-slash fa-2x"></i>
+              <span>Tidak ada lampiran</span>
+            </div>
+          </div>
+        `;
+            }
+          }
+
+          const waLink = peserta["Nomor Telepon"] || "#";
+          const waBtnText =
+            waLink !== "#" ? "Hubungi Peserta" : "Nomor Tidak Tersedia";
+
+          const ketText = peserta["Keterangan"]
+            ? `<p><strong>Ket:</strong> <span style="color:#e11d48; font-weight:600; text-transform:capitalize;">${peserta["Keterangan"]}</span></p>`
+            : "";
+
+          card.innerHTML = `
+      ${imgArea}
+      <div class="card-body">
+        <div class="card-title">
+          <h3>${peserta.Nama}</h3>
+          <span class="badge">${peserta.FGD || "-"}</span>
+        </div>
+        <div class="card-info">
+          <p><strong>NRP:</strong> ${peserta.NRP}</p>
+          ${ketText}
+        </div>
+        <a href="${waLink}" target="_blank" class="btn-wa">
+          <i class="fa-brands fa-whatsapp"></i> ${waBtnText}
+        </a>
+      </div>
+    `;
+
+          fragment.appendChild(card);
+        });
+
+        loader.style.display = "none";
+
+        if (hasValidData) {
+          container.replaceChildren(fragment);
+          emptyState.style.display = "none";
+        } else {
+          container.replaceChildren();
+          emptyState.style.display = "block";
+        }
+
+        renderedDataCache.set(sheetName, data);
+        renderedDataSnapshots.set(sheetName, JSON.stringify(data));
+        renderedSheet = sheetName;
       }
 
       async function loadData(
@@ -890,91 +987,7 @@
             return;
           }
 
-          let hasValidData = false;
-
-          const fragment = document.createDocumentFragment();
-
-          data.forEach((peserta) => {
-            // Abaikan jika nama/NRP kosong atau jika Nama adalah error dari rumus
-            if (
-              !peserta.Nama ||
-              !peserta.NRP ||
-              peserta.Nama === "#N/A" ||
-              peserta.Nama === "#REF!"
-            )
-              return;
-            hasValidData = true;
-
-            const fileId = getDriveFileId(peserta["Bukti Foto"]);
-            const card = document.createElement("div");
-            card.className = "card";
-
-            let imgArea = "";
-
-            // Hanya render kotak gambar untuk kategori presensi
-            if (sheetName !== unsubmittedCategory.id) {
-              if (fileId) {
-                const thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w600`;
-                const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
-
-                imgArea = `
-                                <div class="card-img-wrapper" onclick="openLightbox('${previewUrl}', '${peserta.Nama}')">
-                                    <img src="${thumbnailUrl}" alt="Bukti ${peserta.Nama}" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x400?text=Format+PDF/Tdk+Didukung';">
-                                </div>
-                                <a href="${peserta["Bukti Foto"]}" target="_blank" style="display:block; text-align:center; padding:8px; background:#f1f5f9; color:var(--primary-dark); font-size:0.8rem; text-decoration:none; font-weight:600; border-bottom:1px solid var(--border);">
-                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka File Asli
-                                </a>
-                            `;
-              } else {
-                imgArea = `
-                                <div class="card-img-wrapper" style="cursor:default;">
-                                    <div class="no-img">
-                                        <i class="fa-solid fa-image-slash fa-2x"></i>
-                                        <span>Tidak ada lampiran</span>
-                                    </div>
-                                </div>
-                            `;
-              }
-            }
-
-            let waLink = peserta["Nomor Telepon"] || "#";
-            let waBtnText =
-              waLink !== "#" ? "Hubungi Peserta" : "Nomor Tidak Tersedia";
-
-            // Ekstrak data dari kolom Keterangan khusus untuk Belum Presensi
-            let ketText = peserta["Keterangan"]
-              ? `<p><strong>Ket:</strong> <span style="color:#e11d48; font-weight:600; text-transform:capitalize;">${peserta["Keterangan"]}</span></p>`
-              : "";
-
-            card.innerHTML = `
-                        ${imgArea}
-                        <div class="card-body">
-                            <div class="card-title">
-                                <h3>${peserta.Nama}</h3>
-                                <span class="badge">${peserta.FGD || "-"}</span>
-                            </div>
-                            <div class="card-info">
-                                <p><strong>NRP:</strong> ${peserta.NRP}</p>
-                                ${ketText}
-                            </div>
-                            <a href="${waLink}" target="_blank" class="btn-wa">
-                                <i class="fa-brands fa-whatsapp"></i> ${waBtnText}
-                            </a>
-                        </div>
-                    `;
-            fragment.appendChild(card);
-          });
-
-          if (hasValidData) {
-            container.replaceChildren(fragment);
-            emptyState.style.display = "none";
-          } else {
-            container.replaceChildren();
-            emptyState.style.display = "block";
-          }
-
-          renderedDataSnapshots.set(sheetName, dataSnapshot);
-          renderedSheet = sheetName;
+          renderData(sheetName, data);
         } catch (error) {
           loader.style.display = "none";
 
@@ -1002,6 +1015,13 @@
           .forEach((btn) => btn.classList.remove("active"));
         btnElement.classList.add("active");
 
+        // Jika data sheet sudah tersedia di cache, tampilkan secara instan.
+        if (renderedDataCache.has(sheetName)) {
+          const cachedData = renderedDataCache.get(sheetName);
+          renderData(sheetName, cachedData);
+        }
+
+        // Tetap jalankan loadData untuk mengambil data dari network cache/server.
         loadData(sheetName);
       }
 
@@ -1020,21 +1040,30 @@
 
       // Fungsi untuk mengambil rekapitulasi secara background
       async function loadRekap(forceRefresh = false) {
-        const sheets = attendanceCategories.map((category) => category.id);
+        const attendanceSheets = attendanceCategories.map(
+          (category) => category.id,
+        );
+
+        // Prefetch semua kategori, termasuk BELUM PRESENSI.
+        const sheets = [...attendanceSheets, unsubmittedCategory.id];
+
         let totalPresensi = 0;
         const TOTAL_TARGET = activeDataset.participantCount;
 
         try {
-          // Ambil semua data sheet melalui cache agar request tidak duplikat
+          // Semua sheet diambil paralel dan tetap menggunakan fetch cache.
           const fetchPromises = sheets.map((sheet) =>
             fetchSheet(sheet, forceRefresh),
           );
 
           const allData = await Promise.all(fetchPromises);
 
-          // Proses hasil dan update angka di UI
           allData.forEach((data, index) => {
-            // Validasi: hanya hitung baris yang ada namanya (mengabaikan baris kosong)
+            const sheetName = sheets[index];
+
+            // Simpan data agar semua tab bisa langsung dirender tanpa loading.
+            renderedDataCache.set(sheetName, data);
+
             const validCount = data.filter(
               (peserta) =>
                 peserta.Nama &&
@@ -1042,16 +1071,26 @@
                 peserta.Nama !== "#REF!" &&
                 peserta.NRP,
             ).length;
+
+            // BELUM PRESENSI hanya di-prefetch/cache.
+            // Jangan masukkan ke total presensi dan kartu rekap.
+            if (!attendanceSheets.includes(sheetName)) {
+              return;
+            }
+
             totalPresensi += validCount;
 
-            // Update ID sesuai urutan array sheets
-            const idElement = `rek-${sheets[index].toLowerCase()}`;
-            document.getElementById(idElement).innerText = validCount;
+            const idElement = `rek-${sheetName.toLowerCase()}`;
+            const rekapElement = document.getElementById(idElement);
+
+            if (rekapElement) {
+              rekapElement.innerText = validCount;
+            }
           });
 
-          // Hitung Alpa dan tampilkan
+          // Alpa hanya dihitung dari kategori yang termasuk presensi.
           const totalAlpa = TOTAL_TARGET - totalPresensi;
-          // Mencegah angka minus jika ada data ganda
+
           document.getElementById("rek-alpa").innerText =
             totalAlpa < 0 ? 0 : totalAlpa;
         } catch (error) {
