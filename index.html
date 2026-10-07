@@ -807,6 +807,13 @@
         try {
           const data = await fetchSheet(sheetName, forceRefresh);
 
+          // User mungkin sudah berpindah tab selama request berlangsung.
+          // Data tetap boleh tersimpan di fetch cache, tetapi response dari tab lama
+          // tidak boleh mengubah UI tab yang sedang aktif.
+          if (currentTab !== sheetName) {
+            return;
+          }
+
           if (isInitialLoad) {
             loader.style.display = "none";
           }
@@ -1022,6 +1029,13 @@
         if (!pendingDataUpdate) return;
 
         const { sheetName, data, snapshot } = pendingDataUpdate;
+
+        // Jangan terapkan update milik tab lain.
+        if (currentTab !== sheetName) {
+          pendingDataUpdate = null;
+          hidePendingUpdate();
+          return;
+        }
 
         // Simpan data terbaru ke cache render.
         renderedDataSnapshots.set(sheetName, snapshot);
