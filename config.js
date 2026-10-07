@@ -2,7 +2,7 @@ const APP_CONFIG = {
   portalTitle: "Portal Validasi Presensi",
 
   event: {
-    name: "Latihan SPS 134 - Day 21",
+    name: "Forum 8 Oktober 2026",
     participantCount: 284,
   },
 
