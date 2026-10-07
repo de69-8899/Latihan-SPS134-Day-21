@@ -790,7 +790,11 @@
         return match ? match[1] : null;
       }
 
-      async function loadData(sheetName, forceRefresh = false) {
+      async function loadData(
+        sheetName,
+        forceRefresh = false,
+        applyImmediately = false,
+      ) {
         const container = document.getElementById("dataContainer");
         const loader = document.getElementById("loader");
         const emptyState = document.getElementById("emptyState");
@@ -829,7 +833,11 @@
 
           // Jika data berubah saat user sedang melihat list,
           // simpan update terlebih dahulu agar tidak mengganggu posisi baca.
-          if (!isInitialLoad && renderedSheet === sheetName) {
+          if (
+            !applyImmediately &&
+            !isInitialLoad &&
+            renderedSheet === sheetName
+          ) {
             pendingDataUpdate = {
               sheetName,
               data,
@@ -1028,7 +1036,7 @@
       function applyPendingUpdate() {
         if (!pendingDataUpdate) return;
 
-        const { sheetName, data, snapshot } = pendingDataUpdate;
+        const { sheetName, data } = pendingDataUpdate;
 
         // Jangan terapkan update milik tab lain.
         if (currentTab !== sheetName) {
@@ -1037,21 +1045,17 @@
           return;
         }
 
-        // Simpan data terbaru ke cache render.
-        renderedDataSnapshots.set(sheetName, snapshot);
-
         pendingDataUpdate = null;
         hidePendingUpdate();
 
-        // Paksa loadData melewati pengecekan snapshot sehingga data baru dirender.
-        renderedDataSnapshots.delete(sheetName);
-
+        // Data terbaru sudah selesai diambil dari server.
+        // Simpan ke cache lalu render langsung tanpa membuat pending update lagi.
         sheetCache.set(sheetName, {
           timestamp: Date.now(),
           promise: Promise.resolve(data),
         });
 
-        loadData(sheetName);
+        loadData(sheetName, false, true);
       }
 
       function updateLastSyncedTime() {
