@@ -620,7 +620,7 @@
       function getDatasetSlugFromUrl() {
         const pathParts = window.location.pathname.split("/").filter(Boolean);
 
-        const repoName = "Latihan-SPS134-Day-21";
+        const repoName = "Rekap-Pres";
 
         const repoIndex = pathParts.indexOf(repoName);
 
@@ -648,7 +648,7 @@
           return;
         }
 
-        const repoName = "Latihan-SPS134-Day-21";
+        const repoName = "Rekap-Pres";
 
         const targetPath = `/${repoName}/${encodeURIComponent(slug)}`;
 
@@ -726,7 +726,7 @@
             return;
           }
 
-          const repoName = "Latihan-SPS134-Day-21";
+          const repoName = "Rekap-Pres";
 
           window.location.href = `/${repoName}/${encodeURIComponent(selectedDataset.slug)}`;
         };
